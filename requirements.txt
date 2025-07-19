@@ -1,0 +1,7 @@
+streamlit
+authlib
+requests
+python-dotenv       # if you use a .env file for secrets
+pandas              # if you're handling dataframes
+sqlalchemy
+psycopg2-binary

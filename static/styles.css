@@ -1,0 +1,19 @@
+body {
+    background-color: #fdfdfd;
+    color: #222;
+    font-family: "Segoe UI", sans-serif;
+}
+
+h1 {
+    font-size: 2.5rem;
+    color: #e63946;
+    text-align: center;
+}
+
+.video-card {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}

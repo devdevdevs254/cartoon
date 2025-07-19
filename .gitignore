@@ -1,0 +1,6 @@
+# Ignore Python bytecode and cache
+__pycache__/
+*.pyc
+
+# Ignore Streamlit secrets
+.streamlit/secrets.toml
