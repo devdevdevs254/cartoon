@@ -8,9 +8,9 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 
 # Load secrets from Streamlit secrets manager
-client_id = st.secrets["client_id"]
-client_secret = st.secrets["client_secret"]
-redirect_uri = st.secrets["redirect_uri"]
+client_id = st.secrets["oauth"]["client_id"]
+client_secret = st.secrets["oauth"]["client_secret"]
+redirect_uri = st.secrets["oauth"]["redirect_uri"]
 firestore_credentials = json.loads(st.secrets["firestore_service_account"])
 
 # OAuth2 Endpoints
