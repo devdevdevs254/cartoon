@@ -1,144 +1,145 @@
 # pages/home.py
+
 import streamlit as st
-import requests
 import pandas as pd
 from datetime import datetime
-from sqlalchemy import insert, select
-from db import Session, my_list, watch_history
+import platform
+from firebase_db import (
+    add_to_watch_history,
+    get_watch_history,
+    add_to_my_list,
+    get_my_list,
+    remove_from_my_list,
+    update_viewing_progress,
+    get_viewing_progress,
+)
 
-st.set_page_config(page_title="Cartoons", page_icon="📺", layout="wide")
+st.set_page_config(page_title="CartoonBox", layout="wide")
+st.title("🎞️ CartoonBox")
+st.caption("Enjoy free retro animated series — hosted on Internet Archive")
 
-# Ensure login
-if "user" not in st.session_state or not st.session_state.user:
-    st.warning("You're not logged in.")
+query = st.text_input("🔍 Search Cartoons")
+
+# Firebase Auth
+email = st.session_state.get("email")
+if not email:
+    st.warning("🔐 Please sign in to access your library and save progress.")
     st.stop()
 
-email = st.session_state.user["email"]
-session = Session()
+@st.cache_data(ttl=60)
+def load_cartoon_data():
+    import json
+    with open("data/cartoon_index.json") as f:
+        return json.load(f)
 
-# Profile dropdown
-with st.container():
-    col1, col2 = st.columns([8, 2])
-    with col2:
-        with st.expander(f"👤 {st.session_state.user['name']}"):
-            st.image(st.session_state.user["picture"], width=100)
-            st.caption(f"{email}")
-            if st.button("🚪 Logout"):
-                st.session_state.clear()
-                st.experimental_rerun()
+cartoons = load_cartoon_data()
 
-# Filter/Search
-st.subheader("🎞️ Cartoon Library")
-query = st.text_input("🔍 Search", "")
-year = st.selectbox("📅 Filter by Year", [""] + list(range(1920, 2000)))
-page = st.number_input("Page", min_value=1, value=1)
+# 🔎 Filter by search query
+if query:
+    cartoons = [d for d in cartoons if query.casefold() in d["title"].casefold()]
 
-@st.cache_data
-def fetch_cartoons(query, page, year):
-    q = f'collection:animationandcartoons'
-    if query:
-        q += f' AND title:("{query}")'
-    if year:
-        q += f" AND year:({year})"
+# 👁️ Viewing logic
+for i, show in enumerate(cartoons):
+    title = show["title"]
+    vid = show["video_id"]
+    desc = show.get("description", "")
+    thumb = f"https://archive.org/services/img/{vid}"
+    video_url = f"https://archive.org/embed/{vid}"
 
-    url = "https://archive.org/advancedsearch.php"
-    params = {
-        "q": q,
-        "fl[]": "identifier,title,description",
-        "sort[]": "downloads desc",
-        "rows": 9,
-        "page": page,
-        "output": "json"
-    }
-    return requests.get(url, params=params).json()["response"]["docs"]
+    with st.container():
+        cols = st.columns([1, 3])
+        with cols[0]:
+            st.image(thumb, width=200)
+        with cols[1]:
+            st.subheader(title)
+            st.write(desc)
 
-cartoons = fetch_cartoons(query, page, year)
+            if st.button(f"▶️ Watch", key=f"watch_{i}"):
+                st.session_state["current_video"] = video_url
+                st.session_state["current_title"] = title
+                add_to_watch_history(email, vid, title)
 
-# Helpers
-def is_in(table, vid):
-    stmt = select(table).where(table.c.email == email, table.c.video_id == vid)
-    return session.execute(stmt).first() is not None
+            is_fav = any(item["video_id"] == vid for item in get_my_list(email))
+            if is_fav:
+                if st.button("❌ Remove from My List", key=f"rm_{i}"):
+                    remove_from_my_list(email, vid)
+                    st.experimental_rerun()
+                else:
+                    st.caption("✅ In My List")
+            else:
+                if st.button("❤️ Add to My List", key=f"fav_{i}"):
+                    add_to_my_list(email, vid, title)
 
-def save(table, vid, data={}):
-    stmt = insert(table).values(email=email, video_id=vid, **data)
-    session.execute(stmt)
-    session.commit()
+# Resume Watching
+st.markdown("---")
+st.header("🎬 Resume Watching")
 
-st.header("🎞️ Cartoon Library")
-resumes = session.execute(select(progress).where(progress.c.email == email, progress.c.last_position > 0).order_by(progress.c.updated_at.desc()).limit(5)).fetchall()
-if resumes:
-    cols = st.columns(min(3, len(resumes)))
-    for i, row in enumerate(resumes):
-        vid = row.video_id
+watch_history = get_watch_history(email)
+progress_cache = {row["video_id"]: get_viewing_progress(email, row["video_id"])
+                  for row in watch_history}
+resumables = [r for r in watch_history if progress_cache.get(r["video_id"], 0) > 0]
+
+if resumables:
+    cols = st.columns(min(3, len(resumables)))
+    for i, r in enumerate(resumables):
+        vid = r["video_id"]
+        title = r["title"]
+        pos = progress_cache[vid]
         thumb = f"https://archive.org/services/img/{vid}"
-        pos = int(row.last_position)
         with cols[i % 3]:
             st.image(thumb, use_column_width=True)
-            st.markdown(f"[{vid}](https://archive.org/details/{vid})")
-            st.caption(f"Resume at {pos}s")
+            st.markdown(f"**{title}**")
+            st.markdown(f"[Resume at {pos}s](https://archive.org/details/{vid})")
 else:
-    st.info("No videos in progress")
+    st.info("No viewing progress yet.")
 
-# Main grid
-cols = st.columns(3)
-for idx, cartoon in enumerate(cartoons):
-    vid = cartoon["identifier"]
-    title = cartoon.get("title", "Untitled")
-    thumb = f"https://archive.org/services/img/{vid}"
-    video_url = f"https://archive.org/download/{vid}/{vid}.mp4"
-
-    with cols[idx % 3]:
-        st.image(thumb, use_column_width=True)
-        st.markdown(f"**{title}**")
-
-        if st.button(f"▶️ Watch ({vid})", key=f"watch_{vid}"):
-            st.session_state["current_video"] = video_url
-            st.session_state["current_title"] = title
-            save(watch_history, vid, {"watched_at": datetime.utcnow()})
-
-        if not is_in(my_list, vid):
-            if st.button(f"❤️ Add to My List", key=f"fav_{vid}"):
-                save(my_list, vid)
-        else:
-            st.caption("✅ In My List")
-
-# Playback + simulated progress save
-if "current_video" in st.session_state:
-    st.markdown("---")
-    st.subheader(f"Now Playing: {st.session_state['current_title']}")
-    st.video(st.session_state["current_video"])
-    pos = st.slider("🕓 Resume Position", 0, 300, 0)
-    if st.button("💾 Save Progress"):
-        session.execute(
-            insert(progress).values(email=email, video_id=vid, last_position=pos)
-            .on_conflict_do_update(index_elements=["email", "video_id"],
-                                   set_={"last_position": pos, "updated_at": datetime.utcnow()})
-        )
-        session.commit()
-        st.success("Saved!")
-
-# Download History
+# Manual Progress Save
 st.markdown("---")
-st.subheader("📄 My List & Watch History")
+st.subheader("💾 Save Progress")
 
-tab1, tab2, tab3 = st.tabs(["❤️ My List", "🕒 History", "⬇️ Export"])
+vid_input = st.text_input("Video ID")
+pos = st.slider("Progress (seconds)", 0, 3000, 0)
 
-def render(table):
-    rows = session.execute(select(table).where(table.c.email == email)).fetchall()
-    for row in rows:
-        st.markdown(f"[{row.video_id}](https://archive.org/details/{row.video_id})")
+if st.button("✅ Save Viewing Progress"):
+    if vid_input:
+        update_viewing_progress(email, vid_input, pos)
+        st.success("Progress saved!")
+    else:
+        st.error("Enter a video ID")
+
+# My Library Tabs
+st.markdown("---")
+st.subheader("📚 Library")
+
+tab1, tab2, tab3 = st.tabs(["❤️ My List", "🕓 History", "📥 Export"])
 
 with tab1:
-    render(my_list)
+    favorites = get_my_list(email)
+    if not favorites:
+        st.info("No shows in My List.")
+    for row in favorites:
+        st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
 
 with tab2:
-    render(watch_history)
+    history = get_watch_history(email)
+    if not history:
+        st.info("No viewing history yet.")
+    for row in history:
+        st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
 
 with tab3:
-    hist = session.execute(select(watch_history).where(watch_history.c.email == email)).fetchall()
-    if hist:
-        df = pd.DataFrame(hist, columns=["email", "video_id", "watched_at"])
+    if history:
+        df = pd.DataFrame(history)
+        df["exported_at"] = datetime.utcnow()
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button("Download CSV", data=csv, file_name="watch_history.csv", mime="text/csv")
     else:
-        st.info("No history to export.")
+        st.info("Nothing to export yet.")
+
+# OPTIONAL: Log platform for analytics (extend as needed)
+st.session_state["platform_info"] = {
+    "device": platform.machine(),
+    "system": platform.system(),
+    "ip": st.experimental_get_query_params().get("ip", ["N/A"])[0],
+    "timestamp": datetime.utcnow().isoformat(),
+}

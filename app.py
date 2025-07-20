@@ -1,19 +1,16 @@
+# app.py
 import streamlit as st
-import auth
+import auth  # your custom Firebase auth module
 
-st.set_page_config(page_title="CartoonFlix", page_icon="📺", layout="wide")
-auth.require_login()
-st.switch_page("pages/Home.py")  # Must exist as 'Home.py' inside pages/
+st.set_page_config(
+    page_title="Dr Cartoon",
+    page_icon="📺",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-#app.py
-import streamlit as st
-import auth
-
-st.set_page_config(page_title="Dr Cartoon", page_icon="📺")
-
-# Force login
+# Require login before proceeding
 auth.require_login()
 
-# Once logged in, redirect to home
-st.switch_page("home.py")
-
+# Redirect to home (by page title, not filename)
+st.switch_page("Home")
