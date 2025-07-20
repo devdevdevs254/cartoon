@@ -1,54 +1,71 @@
+import requests
 import os
 import json
-from urllib.parse import quote
+from pathlib import Path
 
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
+INDEX_FILE = DATA_DIR / "cartoon_index.json"
 
-DATA_DIR = "data"
-THUMBNAIL_DIR = "static/thumbnails"
-VIDEO_DIR = "static/videos"
+# Replace with your actual collection or list of identifiers
+CARTOON_IDENTIFIERS = [
+    "AdventuresOfSonicTheHedgehog_1001",
+    "AdventuresOfSonicTheHedgehog_1002"
+]
 
+def fetch_from_ia(identifier):
+    url = f"https://archive.org/metadata/{identifier}"
+    response = requests.get(url)
+    if response.status_code != 200:
+        return None
 
-def fetch_cartoons():
-    """
-    Load the cartoon index from a JSON file.
-    Returns a list of cartoon episodes with metadata.
-    """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(base_dir, "data", "cartoon_index.json")
+    data = response.json()
+    title = data.get("metadata", {}).get("title", identifier)
+    year = data.get("metadata", {}).get("year", "")
+    description = data.get("metadata", {}).get("description", "")
+    
+    files = data.get("files", [])
+    mp4_files = [f for f in files if f.get("format") == "MPEG4" or f.get("name", "").endswith(".mp4")]
 
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    items = []
+    for f in mp4_files:
+        name = f.get("name")
+        items.append({
+            "identifier": identifier,
+            "file": name,
+            "title": title,
+            "year": year,
+            "description": description,
+            "video_url": f"https://archive.org/download/{identifier}/{name}",
+            "thumbnail": f"https://archive.org/download/{identifier}/{name.replace('.mp4', '.jpg')}"
+        })
 
+    return items
 
-def get_thumbnail(episode):
-    """
-    Returns the path to the thumbnail image for a given episode.
-    """
-    filename = episode.get("thumbnail", "")
-    if filename:
-        return f"/{THUMBNAIL_DIR}/{quote(filename)}"
-    return None
+def refresh_cartoon_index():
+    all_items = []
+    for ident in CARTOON_IDENTIFIERS:
+        cartoon_items = fetch_from_ia(ident)
+        if cartoon_items:
+            all_items.extend(cartoon_items)
+    with open(INDEX_FILE, "w", encoding="utf-8") as f:
+        json.dump(all_items, f, indent=2)
+    return all_items
 
+def load_cartoon_data():
+    if INDEX_FILE.exists():
+        with open(INDEX_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        return refresh_cartoon_index()
 
-def get_video_url(episode):
-    """
-    Returns the path to the video file for a given episode.
-    """
-    filename = episode.get("file", "")
-    if filename:
-        return f"/{VIDEO_DIR}/{quote(filename)}"
-    return None
+def group_by_season(cartoons):
+    # Optional: you can improve this based on metadata
+    grouped = {}
+    for c in cartoons:
+        key = c.get("identifier")
+        grouped.setdefault(key, []).append(c)
+    return grouped
 
-
-def group_by_season(episodes):
-    """
-    Groups episodes by season.
-    Returns a dictionary like: { "Season 1": [ep1, ep2], "Season 2": [...] }
-    """
-    seasons = {}
-    for episode in episodes:
-        season = episode.get("season", "Season 1")
-        if season not in seasons:
-            seasons[season] = []
-        seasons[season].append(episode)
-    return seasons
+def get_thumbnail(item):
+    return item.get("thumbnail", "")
