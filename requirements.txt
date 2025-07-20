@@ -1,7 +1,10 @@
-streamlit
-authlib
-requests
+streamlit>=1.32.0
+authlib>=1.2.1
+requests>=2.31.0
 python-dotenv       # if you use a .env file for secrets
 pandas              # if you're handling dataframes
 sqlalchemy
 psycopg2-binary
+google-cloud-firestore>=2.14.0
+google-auth>=2.25.2
+google-auth-oauthlib>=1.1.0
