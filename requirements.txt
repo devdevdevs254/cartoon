@@ -8,3 +8,4 @@ psycopg2-binary
 google-cloud-firestore>=2.14.0
 google-auth>=2.25.2
 google-auth-oauthlib>=1.1.0
+firebase-admin
