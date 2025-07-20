@@ -1,9 +1,10 @@
 # 📁 pages/home.py
 import streamlit as st
 from utils import fetch_cartoons, get_thumbnail, group_by_season
-from firebase_db import get_watch_history, get_viewing_progress
+from firebase_db import get_watch_history, get_my_list, get_viewing_progress
 from datetime import datetime
 import platform
+import math
 
 st.set_page_config(page_title="Cartoon Library", layout="wide")
 st.title("📺 Cartoon Library")
@@ -26,13 +27,20 @@ years_filter = [str(y) for y in years_filter]  # Ensure string format
 sort_by = st.radio("📊 Sort By", ["Popularity", "Recent"], horizontal=True)
 sort = "downloads desc" if sort_by == "Popularity" else "date desc"
 
+# Pagination setup
+page_size = 12
+page_num = st.number_input("Page", min_value=1, value=1, step=1)
+
 # Fetch filtered cartoons
 cartoons = fetch_cartoons(query=query, year=",".join(years_filter) if years_filter else None, sort=sort)
+total_pages = math.ceil(len(cartoons) / page_size)
+page_num = min(page_num, total_pages) if total_pages else 1
+cartoons_paginated = cartoons[(page_num - 1) * page_size: page_num * page_size]
 
 # Continue Watching (if logged in)
 email = st.session_state.get("email")
 if email:
-    st.markdown("### 🎬 Continue Watching")
+    st.markdown("### 🎮 Continue Watching")
     watch_history = get_watch_history(email)
     progress_cache = {
         row["video_id"]: get_viewing_progress(email, row["video_id"]) for row in watch_history
@@ -51,8 +59,8 @@ if email:
 else:
     st.info("🔐 Sign in to see your progress.")
 
-# Display Cartoons by Group
-grouped = group_by_season(cartoons)
+# Display paginated Cartoons by Group
+grouped = group_by_season(cartoons_paginated)
 
 for season, items in grouped.items():
     st.subheader(season)
@@ -65,6 +73,36 @@ for season, items in grouped.items():
             if st.button("▶ Watch", key=f"watch_{cartoon['identifier']}"):
                 st.session_state["selected_video"] = cartoon["identifier"]
                 st.switch_page("pages/watch.py")
+
+# Pagination control
+if total_pages > 1:
+    st.markdown(f"Page {page_num} of {total_pages}")
+
+# Tabs for Library
+st.markdown("---")
+st.subheader("📚 Library")
+
+tab1, tab2 = st.tabs(["❤️ My List", "🕓 History"])
+
+with tab1:
+    if not email:
+        st.info("Login to see your favorites")
+    else:
+        favorites = get_my_list(email)
+        if not favorites:
+            st.info("No shows in My List.")
+        for row in favorites:
+            st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
+
+with tab2:
+    if not email:
+        st.info("Login to see your watch history")
+    else:
+        history = get_watch_history(email)
+        if not history:
+            st.info("No viewing history yet.")
+        for row in history:
+            st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
 
 # Track session device
 st.session_state["platform_info"] = {
