@@ -1,6 +1,7 @@
 # auth.py
 
 import streamlit as st
+import json
 from authlib.integrations.requests_client import OAuth2Session
 from urllib.parse import urlencode
 from google.cloud import firestore
