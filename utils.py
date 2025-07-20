@@ -13,8 +13,8 @@ def fetch_cartoons():
     Load the cartoon index from a JSON file.
     Returns a list of cartoon episodes with metadata.
     """
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(BASE_DIR, "data", "cartoon_index.json")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base_dir, "data", "cartoon_index.json")
 
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
