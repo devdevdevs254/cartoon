@@ -76,7 +76,7 @@ def login_button():
         "prompt": "consent"
     })
     st.markdown(f"""
-        <a href="{auth_url}" target="_self">
+        <a href="{auth_url}" target="_blank">
             <button style="padding: 0.5rem 1rem; font-size: 1rem;">🔐 Login with Google</button>
         </a>
     """, unsafe_allow_html=True)
