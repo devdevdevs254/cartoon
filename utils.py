@@ -1,71 +1,81 @@
+# 📁 utils.py
 import requests
-import os
-import json
-from pathlib import Path
+from collections import Counter, defaultdict
+import re
 
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-INDEX_FILE = DATA_DIR / "cartoon_index.json"
+def fetch_cartoons(query=None, year=None, genre=None, include_subjects=False):
+    base_url = "https://archive.org/advancedsearch.php"
+    q = "collection:animationandcartoons AND mediatype:movies"
 
-# Replace with your actual collection or list of identifiers
-CARTOON_IDENTIFIERS = [
-    "AdventuresOfSonicTheHedgehog_1001",
-    "AdventuresOfSonicTheHedgehog_1002"
-]
+    if query:
+        q += f" AND ({query})"
+    if year:
+        q += f" AND year:{year}"
+    if genre:
+        q += f" AND subject:{genre}"
 
-def fetch_from_ia(identifier):
-    url = f"https://archive.org/metadata/{identifier}"
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None
+    params = {
+        "q": q,
+        "fl[]": "identifier,title,description,subject,year",
+        "sort[]": "downloads desc",
+        "rows": 100,
+        "output": "json"
+    }
 
-    data = response.json()
-    title = data.get("metadata", {}).get("title", identifier)
-    year = data.get("metadata", {}).get("year", "")
-    description = data.get("metadata", {}).get("description", "")
-    
-    files = data.get("files", [])
-    mp4_files = [f for f in files if f.get("format") == "MPEG4" or f.get("name", "").endswith(".mp4")]
+    res = requests.get(base_url, params=params).json()
+    docs = res['response']['docs']
 
-    items = []
-    for f in mp4_files:
-        name = f.get("name")
-        items.append({
-            "identifier": identifier,
-            "file": name,
-            "title": title,
-            "year": year,
-            "description": description,
-            "video_url": f"https://archive.org/download/{identifier}/{name}",
-            "thumbnail": f"https://archive.org/download/{identifier}/{name.replace('.mp4', '.jpg')}"
-        })
+    genre_counts = Counter()
+    if include_subjects:
+        for doc in docs:
+            subjects = doc.get("subject")
+            if isinstance(subjects, list):
+                for tag in subjects:
+                    genre_counts[tag.lower().strip()] += 1
+            elif isinstance(subjects, str):
+                for tag in subjects.split(";"):
+                    genre_counts[tag.lower().strip()] += 1
 
-    return items
+    return docs, genre_counts if include_subjects else None
 
-def refresh_cartoon_index():
-    all_items = []
-    for ident in CARTOON_IDENTIFIERS:
-        cartoon_items = fetch_from_ia(ident)
-        if cartoon_items:
-            all_items.extend(cartoon_items)
-    with open(INDEX_FILE, "w", encoding="utf-8") as f:
-        json.dump(all_items, f, indent=2)
-    return all_items
+def get_metadata(identifier):
+    return requests.get(f"https://archive.org/metadata/{identifier}").json()
 
-def load_cartoon_data():
-    if INDEX_FILE.exists():
-        with open(INDEX_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    else:
-        return refresh_cartoon_index()
+def get_thumbnail(meta):
+    for file in meta.get("files", []):
+        fname = file.get("name", "").lower()
+        fmt = file.get("format", "").lower()
+        if "thumb" in fname or fmt in ["jpeg", "jpeg thumb", "jpeg2000", "jpeg2000 image"]:
+            return f"https://archive.org/download/{meta['metadata']['identifier']}/{file['name']}"
+    return f"https://archive.org/services/img/{meta['metadata']['identifier']}"
 
-def group_by_season(cartoons):
-    # Optional: you can improve this based on metadata
-    grouped = {}
-    for c in cartoons:
-        key = c.get("identifier")
-        grouped.setdefault(key, []).append(c)
-    return grouped
+def get_stream_url(identifier):
+    meta = get_metadata(identifier)
+    for file in meta.get("files", []):
+        if file["name"].endswith(".mp4"):
+            return f"https://archive.org/download/{identifier}/{file['name']}"
+    return None
 
-def get_thumbnail(item):
-    return item.get("thumbnail", "")
+def get_episodes(identifier):
+    meta = get_metadata(identifier)
+    episodes = []
+    for file in meta.get("files", []):
+        if file["name"].endswith(".mp4"):
+            episodes.append({
+                "title": file.get("title") or file["name"],
+                "url": f"https://archive.org/download/{identifier}/{file['name']}",
+                "duration": "",
+                "number": len(episodes) + 1
+            })
+    return episodes
+
+def group_by_season(episodes):
+    seasons = defaultdict(list)
+    for ep in episodes:
+        match = re.search(r"(0?(\d+))x(\d+)", ep["title"])
+        if match:
+            season = f"Season {int(match.group(2))}"
+        else:
+            season = "Specials"
+        seasons[season].append(ep)
+    return dict(seasons)
