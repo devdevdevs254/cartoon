@@ -25,6 +25,8 @@ if st.button("🔄 Refresh Library Cache"):
     st.experimental_rerun()
 
 # 🎞️ Load Data
+years_filter = st.multiselect("📅 Filter by Year", options=available_years, default=[])
+years_filter = [str(y) for y in years_filter]  # ✅ convert to strings
 cartoons = fetch_cartoons(query=query, year=','.join(years_filter) if years_filter else None)
 
 # 📌 Sort
