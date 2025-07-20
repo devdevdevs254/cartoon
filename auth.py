@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 client_id = st.secrets["client_id"]
 client_secret = st.secrets["client_secret"]
 redirect_uri = st.secrets["redirect_uri"]
-firestore_credentials = st.secrets["firestore_service_account"]  # JSON as dict
+firestore_credentials = json.loads(st.secrets["firestore_service_account"])
 
 # OAuth2 Endpoints
 authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
