@@ -1,4 +1,5 @@
 streamlit
+supabase
 authlib
 requests
 python-dotenv       # if you use a .env file for secrets
