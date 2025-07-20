@@ -1,91 +1,65 @@
+# 📁 pages/home.py
+
 import streamlit as st
 from utils import fetch_cartoons, get_thumbnail
-from firebase_db import get_my_list, get_watch_history
+from firebase_db import (
+    get_my_list,
+    get_watch_history,
+    add_to_watch_history,
+)
 from datetime import datetime
+import platform
 
 st.set_page_config(page_title="📺 CartoonBox", layout="wide")
-st.markdown("<h1 style='display: inline;'>📺 CartoonBox</h1>", unsafe_allow_html=True)
 
-# Top bar: Search + Profile
-cols = st.columns([3, 1])
-with cols[0]:
-    query = st.text_input("🔍 Search for cartoons", placeholder="e.g. Tom and Jerry, Sonic...")
-with cols[1]:
-    if st.session_state.get("user"):
-        st.markdown(f"[👤 {st.session_state.user.get('name', 'Profile')}](/pages/profile.py)")
-    else:
-        st.markdown("[🔐 Login](#)")
+# ─── TOP NAVBAR ─────────────────────────────────────────────
+with st.container():
+    col1, col2, col3 = st.columns([1, 6, 1])
+    with col1:
+        st.markdown("### 📺")
+    with col2:
+        query = st.text_input("Search Cartoons", placeholder="e.g. Sonic, Bugs Bunny", label_visibility="collapsed")
+    with col3:
+        if "user" in st.session_state:
+            st.markdown(f"""<a href='/pages/profile.py'><button style='float:right'>👤</button></a>""", unsafe_allow_html=True)
+        else:
+            st.warning("🔐 Sign in required")
 
-# Filters
-st.markdown("---")
-filter_cols = st.columns([2, 2, 2])
-with filter_cols[0]:
-    years_filter = st.multiselect("📅 Filter by Year", options=[str(y) for y in range(1940, 2025)], default=[])
-with filter_cols[1]:
-    sort_option = st.selectbox("Sort by", ["Downloads", "Latest"])
-with filter_cols[2]:
-    if st.button("🔄 Refresh"):
-        st.cache_data.clear()
+# ─── FILTER TOGGLE ──────────────────────────────────────────
+tab = st.radio("View", ["📚 All", "❤️ My List", "🕓 History"], horizontal=True, label_visibility="collapsed")
 
-# Fetch and display cartoons
-cartoons = fetch_cartoons(query=query, year=",".join(years_filter) if years_filter else None,
-                          sort="date desc" if sort_option == "Latest" else "downloads desc")
-
-PER_PAGE = 12
-page = st.session_state.get("page", 1)
-total_pages = (len(cartoons) + PER_PAGE - 1) // PER_PAGE
-start = (page - 1) * PER_PAGE
-end = start + PER_PAGE
-
-paginated = cartoons[start:end]
-
-st.markdown("---")
-st.markdown("## 📰 Cartoon Feed")
-grid_cols = st.columns(4)
-for i, cartoon in enumerate(paginated):
-    with grid_cols[i % 4]:
-        st.image(get_thumbnail(cartoon), use_column_width=True)
-        st.markdown(f"**{cartoon['title']}**")
-        st.markdown(f"*{cartoon.get('year', '')}*")
-        if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
-            st.session_state["selected_video"] = cartoon["identifier"]
-            st.switch_page("pages/watch.py")
-
-# Pagination Controls
-pag_col1, pag_col2, pag_col3 = st.columns(3)
-with pag_col1:
-    if st.button("⬅️ Prev") and page > 1:
-        st.session_state.page = page - 1
-        st.experimental_rerun()
-with pag_col2:
-    st.markdown(f"**Page {page} of {total_pages}**")
-with pag_col3:
-    if st.button("➡️ Next") and page < total_pages:
-        st.session_state.page = page + 1
-        st.experimental_rerun()
-
-# Tabs for My List and History
-st.markdown("---")
-st.header("🗂️ Library")
-tab1, tab2 = st.tabs(["❤️ My List", "🕓 History"])
-
-uid = st.session_state.get("uid")
-if uid:
-    with tab1:
-        my_list = get_my_list(uid)
-        if not my_list:
-            st.info("No saved cartoons.")
-        for row in my_list:
-            st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
-
-    with tab2:
-        history = get_watch_history(uid)
-        if not history:
-            st.info("No watch history yet.")
-        for row in history:
-            st.markdown(f"[{row['title']}](https://archive.org/details/{row['video_id']})")
+# ─── FETCH + FILTER CARTOONS ────────────────────────────────
+if tab == "📚 All":
+    cartoons = fetch_cartoons(query=query)
+elif tab == "❤️ My List":
+    cartoons = get_my_list(st.session_state.uid)
+elif tab == "🕓 History":
+    cartoons = get_watch_history(st.session_state.uid)
 else:
-    with tab1:
-        st.warning("Login to view your saved list.")
-    with tab2:
-        st.warning("Login to view your history.")
+    cartoons = []
+
+# ─── DISPLAY RESULTS ─────────────────────────────────────────
+if cartoons:
+    st.markdown("### Recommended For You")
+    for i in range(0, len(cartoons), 4):
+        row = cartoons[i:i+4]
+        cols = st.columns(4)
+        for j, cartoon in enumerate(row):
+            with cols[j]:
+                st.image(get_thumbnail(cartoon), use_column_width=True)
+                st.markdown(f"**{cartoon.get('title', 'Untitled')}**")
+                year = cartoon.get("year", "N/A")
+                st.caption(f"📅 {year}")
+                if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
+                    st.session_state["selected_video"] = cartoon["identifier"]
+                    add_to_watch_history(st.session_state.uid, cartoon["identifier"], cartoon.get("title", ""))
+                    st.switch_page("pages/watch.py")
+else:
+    st.info("No cartoons found.")
+
+# ─── PLATFORM INFO (Analytics / Debug) ───────────────────────
+st.session_state["platform_info"] = {
+    "device": platform.machine(),
+    "system": platform.system(),
+    "timestamp": datetime.utcnow().isoformat(),
+}
