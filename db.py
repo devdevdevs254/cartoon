@@ -8,7 +8,12 @@ from datetime import datetime
 DATABASE_URL = st.secrets["db_url"]
 
 # Setup DB engine and metadata
-engine = create_engine(DATABASE_URL)
+engine = create_engine(st.secrets["db_url"])
+
+with engine.connect() as conn:
+    result = conn.execute("SELECT * FROM your_table")
+    for row in result:
+        st.write(row)
 metadata = MetaData()
 
 # Define tables

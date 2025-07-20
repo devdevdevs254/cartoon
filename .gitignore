@@ -1,6 +1,11 @@
-# Ignore Python bytecode and cache
+# Ignore secrets
+.streamlit/secrets.toml
+
+# Ignore Python cache
 __pycache__/
 *.pyc
 
-# Ignore Streamlit secrets
-.streamlit/secrets.toml
+# Ignore virtual environment
+.venv/
+env/
+venv/

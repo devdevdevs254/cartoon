@@ -4,9 +4,13 @@ from authlib.integrations.requests_client import OAuth2Session
 from urllib.parse import urlencode
 
 # Load secrets
+import streamlit as st
 client_id = st.secrets["client_id"]
 client_secret = st.secrets["client_secret"]
 redirect_uri = st.secrets["redirect_uri"]
+supabase_url = st.secrets["supabase_url"]
+api_key = st.secrets["supabase_api_key"]
+db_url = st.secrets["db_url"]
 
 authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
 token_endpoint = "https://oauth2.googleapis.com/token"
