@@ -41,13 +41,19 @@ def fetch_cartoons(query=None, year=None, genre=None, include_subjects=False, so
 def get_metadata(identifier):
     return requests.get(f"https://archive.org/metadata/{identifier}").json()
 
-def get_thumbnail(meta):
-    for file in meta.get("files", []):
-        fname = file.get("name", "").lower()
-        fmt = file.get("format", "").lower()
-        if "thumb" in fname or fmt in ["jpeg", "jpeg thumb", "jpeg2000", "jpeg2000 image"]:
-            return f"https://archive.org/download/{meta['metadata']['identifier']}/{file['name']}"
-    return f"https://archive.org/services/img/{meta['metadata']['identifier']}"
+def get_thumbnail(data):
+    if "metadata" in data and "files" in data:
+        identifier = data["metadata"]["identifier"]
+        for file in data["files"]:
+            fname = file.get("name", "").lower()
+            fmt = file.get("format", "").lower()
+            if "thumb" in fname or fmt in ["jpeg", "jpeg thumb", "jpeg2000", "jpeg2000 image"]:
+                return f"https://archive.org/download/{identifier}/{file['name']}"
+    else:
+        identifier = data["identifier"]
+
+    # Fallback to IA default
+    return f"https://archive.org/services/img/{identifier}"
 
 def get_stream_url(identifier):
     meta = get_metadata(identifier)
