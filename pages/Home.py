@@ -1,4 +1,4 @@
-""# 📁 pages/home.py
+# 📁 pages/home.py
 
 import streamlit as st
 from utils import fetch_cartoons, get_thumbnail, group_by_season
@@ -7,7 +7,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Dr. Cartoon", layout="wide")
 
-# ─── TOP NAVIGATION BAR ────────────────────────────────────────────────
+# ─── TOP NAVIGATION BAR ────────────────────────────────────────
 with st.container():
     col1, col2, col3 = st.columns([1, 4, 4])  # 3-part top bar layout
 
@@ -38,20 +38,21 @@ with st.container():
 
 uid = st.session_state.get("uid")
 
-# ─── TOGGLE FILTER ───────────────────────────────────────────────────────
+# ─── TOGGLE FILTER ────────────────────────────────
+st.markdown("---")
 tab = st.radio("View", ["📚 All", "❤️ My List", "🕓 History"], horizontal=True, label_visibility="collapsed")
 
-# ─── FETCH CARTOONS ──────────────────────────────────────────────────────
+# ─── FETCH CARTOONS ──────────────────────────────
 all_cartoons = fetch_cartoons(query=query, sort_by=sort_by, include_subjects=False)[0]
 
-# ─── DYNAMIC YEAR FILTER ─────────────────────────────────────────────────
+# ─── DYNAMIC YEAR FILTER ───────────────────────────
 available_years = sorted({int(c["year"]) for c in all_cartoons if "year" in c and str(c["year"]).isdigit()}, reverse=True)
 years_filter = st.multiselect("📅 Filter by Year", options=available_years, default=[])
 
 if years_filter:
     all_cartoons = [c for c in all_cartoons if int(c.get("year", 0)) in years_filter]
 
-# ─── FILTER BY TAB ───────────────────────────────────────────────────────
+# ─── FILTER BY TAB ───────────────────────────────
 if tab == "❤️ My List":
     ids = {item["video_id"] for item in get_my_list(uid)}
     all_cartoons = [c for c in all_cartoons if c["identifier"] in ids]
@@ -59,7 +60,7 @@ elif tab == "🕓 History":
     ids = {item["video_id"] for item in get_watch_history(uid)}
     all_cartoons = [c for c in all_cartoons if c["identifier"] in ids]
 
-# ─── PAGINATION SETUP ───────────────────────────────────────────────────
+# ─── PAGINATION SETUP ────────────────────────────
 PER_PAGE = 8
 page = st.session_state.get("page", 0)
 
@@ -70,7 +71,7 @@ start = page * PER_PAGE
 end = start + PER_PAGE
 current_page = all_cartoons[start:end]
 
-# ─── DISPLAY THUMBNAILS IN GRID ─────────────────────────────────────────
+# ─── DISPLAY THUMBNAILS IN GRID ───────────────────────────
 st.markdown("---")
 cols = st.columns(2 if st.session_state.get("is_mobile") else 4)
 
@@ -83,7 +84,7 @@ for i, cartoon in enumerate(current_page):
             st.session_state["selected_video"] = cartoon['identifier']
             st.switch_page("pages/watch.py")
 
-# ─── PAGINATION CONTROLS ────────────────────────────────────────────────
+# ─── PAGINATION CONTROLS ───────────────────────────
 st.markdown("---")
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 
@@ -101,5 +102,5 @@ with col_next:
         change_page(1)
         st.experimental_rerun()
 
-# ─── FOOTER OR TIMESTAMP ────────────────────────────────────────────────
-st.caption(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")""
+# ─── FOOTER OR TIMESTAMP ───────────────────────────
+st.caption(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
