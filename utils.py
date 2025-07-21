@@ -3,7 +3,7 @@ import requests
 from collections import Counter, defaultdict
 import re
 
-def fetch_cartoons(query=None, year=None, genre=None, include_subjects=False):
+def fetch_cartoons(query=None, year=None, genre=None, include_subjects=False, sort_by="downloads"):
     base_url = "https://archive.org/advancedsearch.php"
     q = "collection:animationandcartoons AND mediatype:movies"
 
