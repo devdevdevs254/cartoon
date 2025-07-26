@@ -90,7 +90,7 @@ col_prev, col_page, col_next = st.columns([1, 2, 1])
 
 with col_prev:
     if st.button("⬅ Previous") and page > 0:
-        change_page(-1)
+        st.session_state.page = page - 1
         st.experimental_rerun()
 
 with col_page:
@@ -99,7 +99,7 @@ with col_page:
 
 with col_next:
     if st.button("Next ➡") and end < len(all_cartoons):
-        change_page(1)
+        st.session_state.page = page + 1
         st.experimental_rerun()
 
 # ─── FOOTER OR TIMESTAMP ───────────────────────────
