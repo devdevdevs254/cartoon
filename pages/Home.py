@@ -104,22 +104,48 @@ total_pages = (len(all_cartoons) - 1) // PER_PAGE + 1
 # Display the list of cartoons for the current page
 st.write(all_cartoons[start:end])
 
+# ─── PAGINATION SETUP ────────────────────────────
+PER_PAGE = 8
+
+# Initialize page state
+if "page" not in st.session_state:
+    st.session_state.page = 0
+
+page = st.session_state.page
+start = page * PER_PAGE
+end = start + PER_PAGE
+total_pages = (len(all_cartoons) - 1) // PER_PAGE + 1
+current_page_items = all_cartoons[start:end]
+
+# ─── DISPLAY THUMBNAILS IN GRID ───────────────────────────
+st.markdown("---")
+cols = st.columns(2 if st.session_state.get("is_mobile") else 4)
+
+for i, cartoon in enumerate(current_page_items):
+    with cols[i % len(cols)]:
+        st.image(get_thumbnail(cartoon), use_container_width=True)
+        st.markdown(f"**{cartoon['title']}**")
+        st.caption(cartoon.get("year", "Unknown Year"))
+        if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
+            st.session_state["selected_video"] = cartoon['identifier']
+            st.switch_page("pages/watch.py")
+
 # ─── PAGINATION CONTROLS ───────────────────────────
 st.markdown("---")
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 
 with col_prev:
     if st.button("⬅ Previous") and page > 0:
-        st.session_state.page -= 1  # Decrease the page number
-        st.experimental_rerun()  # Rerun the script to update the page
+        st.session_state.page -= 1
+        st.experimental_rerun()
 
 with col_page:
-    st.markdown(f"**Page {page + 1} of {total_pages}**")  # Display current page info
+    st.markdown(f"**Page {page + 1} of {total_pages}**")
 
 with col_next:
     if st.button("Next ➡") and end < len(all_cartoons):
-        st.session_state.page += 1  # Increase the page number
-        st.experimental_rerun()  # Rerun the script to update the page
+        st.session_state.page += 1
+        st.experimental_rerun()
 
 # ─── FOOTER OR TIMESTAMP ───────────────────────────
 st.caption(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
