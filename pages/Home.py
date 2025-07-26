@@ -84,23 +84,42 @@ for i, cartoon in enumerate(current_page):
             st.session_state["selected_video"] = cartoon['identifier']
             st.switch_page("pages/watch.py")
 
+# Constants
+PER_PAGE = 10
+
+# Initialize session state for page number
+if "page" not in st.session_state:
+    st.session_state.page = 0
+
+# Get the current page from session state
+page = st.session_state.page
+
+# Calculate start and end indices for the page
+start = page * PER_PAGE
+end = start + PER_PAGE
+
+# Assuming 'all_cartoons' is the list of all items
+total_pages = (len(all_cartoons) - 1) // PER_PAGE + 1
+
+# Display the list of cartoons for the current page
+st.write(all_cartoons[start:end])
+
 # ─── PAGINATION CONTROLS ───────────────────────────
 st.markdown("---")
 col_prev, col_page, col_next = st.columns([1, 2, 1])
 
 with col_prev:
     if st.button("⬅ Previous") and page > 0:
-        st.session_state.page = page - 1
-        st.experimental_rerun()
+        st.session_state.page -= 1  # Decrease the page number
+        st.experimental_rerun()  # Rerun the script to update the page
 
 with col_page:
-    total_pages = (len(all_cartoons) - 1) // PER_PAGE + 1
-    st.markdown(f"**Page {page + 1} of {total_pages}**")
+    st.markdown(f"**Page {page + 1} of {total_pages}**")  # Display current page info
 
 with col_next:
     if st.button("Next ➡") and end < len(all_cartoons):
-        st.session_state.page = page + 1
-        st.experimental_rerun()
+        st.session_state.page += 1  # Increase the page number
+        st.experimental_rerun()  # Rerun the script to update the page
 
 # ─── FOOTER OR TIMESTAMP ───────────────────────────
 st.caption(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
