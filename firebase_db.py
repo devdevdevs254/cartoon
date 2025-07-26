@@ -7,7 +7,7 @@ import uuid
 
 # Initialize Firebase Admin SDK
 if not firebase_admin._apps:
-    cred = credentials.Certificate(json.loads(st.secrets["FIREBASE"]))  # Path to your service account JSON
+    cred = credentials.Certificate(st.secrets["FIREBASE"])  # Path to your service account JSON
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
