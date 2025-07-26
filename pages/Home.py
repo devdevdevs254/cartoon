@@ -77,7 +77,7 @@ cols = st.columns(2 if st.session_state.get("is_mobile") else 4)
 
 for i, cartoon in enumerate(current_page):
     with cols[i % len(cols)]:
-        st.image(get_thumbnail(cartoon), use_containert_width=True)
+        st.image(get_thumbnail(cartoon), use_container_width=True)
         st.markdown(f"**{cartoon['title']}**")
         st.caption(cartoon.get("year", "Unknown Year"))
         if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
