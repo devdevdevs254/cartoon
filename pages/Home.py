@@ -62,52 +62,6 @@ elif tab == "🕓 History":
 
 # ─── PAGINATION SETUP ────────────────────────────
 PER_PAGE = 8
-page = st.session_state.get("page", 0)
-
-def change_page(delta):
-    st.session_state.page = max(0, st.session_state.get("page", 0) + delta)
-
-start = page * PER_PAGE
-end = start + PER_PAGE
-current_page = all_cartoons[start:end]
-
-# ─── DISPLAY THUMBNAILS IN GRID ───────────────────────────
-st.markdown("---")
-cols = st.columns(2 if st.session_state.get("is_mobile") else 4)
-
-for i, cartoon in enumerate(current_page):
-    with cols[i % len(cols)]:
-        st.image(get_thumbnail(cartoon), use_container_width=True)
-        st.markdown(f"**{cartoon['title']}**")
-        st.caption(cartoon.get("year", "Unknown Year"))
-        if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
-            st.session_state["selected_video"] = cartoon['identifier']
-            st.switch_page("pages/watch.py")
-
-# Constants
-PER_PAGE = 10
-
-# Initialize session state for page number
-if "page" not in st.session_state:
-    st.session_state.page = 0
-
-# Get the current page from session state
-page = st.session_state.page
-
-# Calculate start and end indices for the page
-start = page * PER_PAGE
-end = start + PER_PAGE
-
-# Assuming 'all_cartoons' is the list of all items
-total_pages = (len(all_cartoons) - 1) // PER_PAGE + 1
-
-# Display the list of cartoons for the current page
-st.write(all_cartoons[start:end])
-
-# ─── PAGINATION SETUP ────────────────────────────
-PER_PAGE = 8
-
-# Initialize page state
 if "page" not in st.session_state:
     st.session_state.page = 0
 
@@ -126,7 +80,7 @@ for i, cartoon in enumerate(current_page_items):
         st.image(get_thumbnail(cartoon), use_container_width=True)
         st.markdown(f"**{cartoon['title']}**")
         st.caption(cartoon.get("year", "Unknown Year"))
-        if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}"):
+        if st.button("▶ Watch Now", key=f"watch_{cartoon['identifier']}_{page}"):  # ADD page to key
             st.session_state["selected_video"] = cartoon['identifier']
             st.switch_page("pages/watch.py")
 
